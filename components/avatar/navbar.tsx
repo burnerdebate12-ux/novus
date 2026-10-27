@@ -32,6 +32,7 @@ import {
 import { generateReactCode } from "@/lib/avatar/code-gen"
 import { useAvatar } from "@/lib/avatar/store"
 import type { ShadingMode } from "@/lib/avatar/types"
+import { UserMenu } from "@/components/user-menu"
 import { IconButton } from "./icon-button"
 import { useAvatarExport } from "./use-avatar-export"
 
@@ -173,6 +174,7 @@ export function Navbar({
         <IconButton label="Toggle inspector" className="lg:hidden" onClick={onToggleRight}>
           <PanelRight />
         </IconButton>
+        <UserMenu />
       </div>
     </header>
   )

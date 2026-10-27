@@ -36,7 +36,7 @@ type Action =
   | { type: "design"; key: string; update: (d: Design) => Design; at: number }
   | { type: "undo" }
   | { type: "redo" }
-  | { type: "reset" }
+  | { type: "reset"; design: Design }
   | { type: "view"; patch: Partial<ViewState> }
   | { type: "anim"; patch: Partial<AnimState> }
   | { type: "projectName"; name: string }
@@ -78,7 +78,7 @@ function reducer(state: StoreState, action: Action): StoreState {
     case "reset":
       return {
         ...state,
-        history: { past: [...h.past, h.present], present: createDefaultDesign(), future: [], lastKey: null, lastAt: 0 },
+        history: { past: [...h.past, h.present], present: action.design, future: [], lastKey: null, lastAt: 0 },
       }
     case "view":
       return { ...state, view: { ...state.view, ...action.patch } }
@@ -89,8 +89,8 @@ function reducer(state: StoreState, action: Action): StoreState {
   }
 }
 
-const initialState: StoreState = {
-  history: { past: [], present: createDefaultDesign(), future: [], lastKey: null, lastAt: 0 },
+const createInitialState = (design: Design, projectName: string): StoreState => ({
+  history: { past: [], present: design, future: [], lastKey: null, lastAt: 0 },
   view: {
     selected: "head",
     shading: "lit",
@@ -102,16 +102,17 @@ const initialState: StoreState = {
     cameraResetKey: 0,
   },
   anim: { preset: "idle", playing: true, speed: 1, loop: true },
-  projectName: "Neon Ronin",
-}
+  projectName,
+})
 
 export interface SceneRefs {
   avatar: Group | null
   parts: Partial<Record<PartId, Object3D>>
 }
 
-function useAvatarValue() {
-  const [state, dispatch] = useReducer(reducer, initialState)
+function useAvatarValue(initialDesign: Design, initialName: string) {
+  const [state, dispatch] = useReducer(reducer, undefined, () => createInitialState(initialDesign, initialName))
+  const resetTo = useRef(initialDesign)
   const timeRef = useRef(0)
   const sceneRefs = useRef<SceneRefs>({ avatar: null, parts: {} })
 
@@ -124,7 +125,7 @@ function useAvatarValue() {
     () => ({
       undo: () => dispatch({ type: "undo" }),
       redo: () => dispatch({ type: "redo" }),
-      resetDesign: () => dispatch({ type: "reset" }),
+      resetDesign: () => dispatch({ type: "reset", design: resetTo.current }),
       setView: (patch: Partial<ViewState>) => dispatch({ type: "view", patch }),
       setAnim: (patch: Partial<AnimState>) => dispatch({ type: "anim", patch }),
       setProjectName: (name: string) => dispatch({ type: "projectName", name }),
@@ -196,8 +197,16 @@ export type AvatarStore = ReturnType<typeof useAvatarValue>
 
 const AvatarContext = createContext<AvatarStore | null>(null)
 
-export function AvatarProvider({ children }: { children: ReactNode }) {
-  const value = useAvatarValue()
+export function AvatarProvider({
+  initialDesign = createDefaultDesign(),
+  initialName = "Neon Ronin",
+  children,
+}: {
+  initialDesign?: Design
+  initialName?: string
+  children: ReactNode
+}) {
+  const value = useAvatarValue(initialDesign, initialName)
   return <AvatarContext.Provider value={value}>{children}</AvatarContext.Provider>
 }
 
